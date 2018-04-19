@@ -454,7 +454,7 @@ def run(args, dag=None):
     ti = TaskInstance(task, args.execution_date)
     ti.refresh_from_db()
 
-    ti.init_run_context(raw=args.raw)
+    ti.init_log_context(args.raw)
 
     hostname = get_hostname()
     log.info("Running %s on host %s", ti, hostname)

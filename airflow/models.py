@@ -1960,12 +1960,14 @@ class TaskInstance(Base, LoggingMixin):
             TI.state == State.RUNNING
         ).count()
 
-    def init_run_context(self, raw=False):
+    def init_log_context(self, raw):
         """
         Sets the log context.
         """
         self.raw = raw
         self._set_context(self)
+
+# End TaskInstance class.
 
 
 class TaskFail(Base):
@@ -2940,6 +2942,34 @@ class DagModel(Base):
     @provide_session
     def get_current(cls, dag_id, session=None):
         return session.query(cls).filter(cls.dag_id == dag_id).first()
+
+
+class RunContext(Base):
+    """
+    Define the run context to enable conditional parameterization of dags,
+    tasks, etc.  For example, when running airflow in different ways (e.g.
+    test, backfill, schedule, etc), it is sometimes desirable to conditionally
+    adjust the dag/task pool, priority, and even params passed into the tasks.
+
+    RunContext is initialized when airflow is called:
+        airflow test ...  -> rc.is_test() returns True
+        airflow backfill ...  -> rc.is_backfill() returns True
+        airflow run ...  -> rc.is_schedule() returns True
+    """
+    def __init__(self, rc=None, log=None):
+        self.log = log
+        if self.log: self.log.info('Run context is: {}'.format(rc))
+
+        self.rc = rc
+
+    def is_test(self):
+        return self.rc == 'test'
+
+    def is_backfill(self):
+        return self.rc == 'backfill'
+
+    def is_scheduled(self):
+        return self.rc == 'scheduled'
 
 
 @functools.total_ordering

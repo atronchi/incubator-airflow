@@ -94,26 +94,24 @@ def _build_metrics(func_name, namespace):
     :return: dict with metrics
     """
 
-    metrics = {'sub_command': func_name}
-    metrics['start_datetime'] = datetime.utcnow()
-    metrics['full_command'] = '{}'.format(list(sys.argv))
-    metrics['user'] = getpass.getuser()
-
     assert isinstance(namespace, Namespace)
-    tmp_dic = vars(namespace)
-    metrics['dag_id'] = tmp_dic.get('dag_id')
-    metrics['task_id'] = tmp_dic.get('task_id')
-    metrics['execution_date'] = tmp_dic.get('execution_date')
-    metrics['host_name'] = socket.gethostname()
+    ns_vars = vars(namespace)
 
-    extra = json.dumps(dict((k, metrics[k]) for k in ('host_name', 'full_command')))
-    log = airflow.models.Log(
+    metrics = dict(
+        sub_command=func_name,
+        start_datetime=datetime.utcnow(),
+        full_command='{}'.format(list(sys.argv)),
+        user=getpass.getuser(),
+        host_name=socket.gethostname(),
+        **{k: ns_vars.get(v) for k in ('dag_id', 'task_id', 'execution_date')}
+        )
+
+    metrics['log'] = airflow.models.Log(
         event='cli_{}'.format(func_name),
         task_instance=None,
-        owner=metrics['user'],
-        extra=extra,
-        task_id=metrics.get('task_id'),
-        dag_id=metrics.get('dag_id'),
-        execution_date=metrics.get('execution_date'))
-    metrics['log'] = log
+        extra=json.dumps({k: metrics[k] for k in ('host_name', 'full_command')}),
+        owner=metrics.get('user'),
+        **{k: metrics.get(k) for k in ('dag_id', 'task_id', 'execution_date')}
+        )
+
     return metrics
